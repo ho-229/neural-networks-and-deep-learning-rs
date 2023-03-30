@@ -13,10 +13,10 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-pub type Sample = Vec<(
+pub type Sample = (
     Vec<f64>, // image
-    Vec<u8>,  // label
-)>;
+    u8,       // label
+);
 
 #[derive(Debug, Clone)]
 pub struct Network {
@@ -75,11 +75,11 @@ impl Network {
 
     pub fn sdg(
         &mut self,
-        training_data: &Sample,
+        training_data: &Vec<Sample>,
         epochs: u32,
         mini_batch_size: usize,
         eta: f64,
-        test_data: Option<&Sample>,
+        test_data: Option<&Vec<Sample>>,
     ) {
         for j in 0..epochs {
             training_data
@@ -98,7 +98,7 @@ impl Network {
         }
     }
 
-    fn update_mini_batch(&mut self, mini_batch: &[(Vec<f64>, Vec<u8>)], eta: f64) {
+    fn update_mini_batch(&mut self, mini_batch: &[Sample], eta: f64) {
         let mut nabla_b = d2_same_shape(&self.biases);
         let mut nabla_w = d3_same_shape(&self.weights);
 
@@ -135,7 +135,7 @@ impl Network {
             .collect();
     }
 
-    fn backprop(&self, img: &Vec<f64>, lbl: &Vec<u8>) -> (Array2D<f64>, Array3D<f64>) {
+    fn backprop(&self, img: &Vec<f64>, lbl: &u8) -> (Array2D<f64>, Array3D<f64>) {
         let mut nabla_b = d2_same_shape(&self.biases);
         let mut nabla_w = d3_same_shape(&self.weights);
 
@@ -153,7 +153,7 @@ impl Network {
         let mut delta = d1_mul_d1(
             d1_sub_d1(
                 activations.last().unwrap().iter().cloned(),
-                lbl.iter().cloned(),
+                digit2one_hot::<f64>(*lbl),
             ),
             zs.last().unwrap().iter().map(|val| sigmoid_prime(*val)),
         )
@@ -189,11 +189,11 @@ impl Network {
         (nabla_b, nabla_w)
     }
 
-    fn evaluate(&self, test_data: &Sample) -> u32 {
+    fn evaluate(&self, test_data: &Vec<Sample>) -> u32 {
         test_data
             .iter()
             .map(|(img, lbl)| {
-                (max_index(&self.feed_forward(img.clone()).unwrap()) == max_index(lbl)) as u32
+                (one_hot2digit(&self.feed_forward(img.clone()).unwrap()) == *lbl) as u32
             })
             .sum::<u32>()
     }

@@ -1,13 +1,13 @@
 use std::iter::zip;
 
-use mnist::{MnistBuilder, NormalizedMnist};
+use mnist::{Mnist, MnistBuilder};
 use network::Network;
 
 mod network;
 mod util;
 
 fn main() {
-    let NormalizedMnist {
+    let Mnist {
         trn_img,
         trn_lbl,
         tst_img,
@@ -16,16 +16,16 @@ fn main() {
     } = MnistBuilder::new()
         .training_set_length(50_000)
         .test_set_length(10_000)
-        .label_format_one_hot()
-        .finalize()
-        .normalize();
+        .finalize();
 
-    let regular_data = |img: Vec<f32>, lbl: Vec<u8>| {
-        zip(img.chunks(28 * 28), lbl.chunks(10))
+    let regular_data = |img: Vec<u8>, lbl: Vec<u8>| {
+        zip(img.chunks(28 * 28), lbl.iter())
             .map(|(img, lbl)| {
                 (
-                    img.iter().map(|pixel| *pixel as f64).collect::<Vec<_>>(),
-                    lbl.iter().cloned().collect::<Vec<_>>(),
+                    img.iter()
+                        .map(|pixel| *pixel as f64 / 255.)
+                        .collect::<Vec<_>>(),
+                    *lbl,
                 )
             })
             .collect::<Vec<_>>()

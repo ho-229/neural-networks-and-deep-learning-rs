@@ -117,19 +117,6 @@ pub fn d2_transpose<N: Copy>(a: &Array2D<N>) -> Array2D<N> {
 }
 
 #[inline]
-pub fn max_index<N: Num + PartialOrd + Copy>(a: &Array1D<N>) -> usize {
-    a.iter()
-        .enumerate()
-        .fold((0, N::zero()), |(max_i, max_val), (i, val)| {
-            match *val > max_val {
-                true => (i, *val),
-                false => (max_i, max_val),
-            }
-        })
-        .0
-}
-
-#[inline]
 pub fn random_array<B, I>(size: usize) -> B
 where
     I: Sized,
@@ -140,6 +127,24 @@ where
         .sample_iter(StandardNormal)
         .take(size)
         .collect()
+}
+
+#[inline]
+pub fn one_hot2digit<N: Num + PartialOrd + Copy>(a: &Array1D<N>) -> u8 {
+    a.iter()
+        .enumerate()
+        .fold((0, N::zero()), |(max_i, max_val), (i, val)| {
+            match *val > max_val {
+                true => (i as u8, *val),
+                false => (max_i, max_val),
+            }
+        })
+        .0
+}
+
+#[inline]
+pub fn digit2one_hot<N: NumCast>(n: u8) -> impl Iterator<Item = N> {
+    (0..10u8).map(move |i| cast((i == n) as u8).unwrap())
 }
 
 #[cfg(test)]

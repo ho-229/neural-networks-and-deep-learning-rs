@@ -1,6 +1,6 @@
 # neural-networks-and-deep-learning-rs
 
-Rust code sample for [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/). you can find the Python version [here](https://github.com/mnielsen/neural-networks-and-deep-learning).
+Sample Rust code for [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/). you can find the Python version [here](https://github.com/mnielsen/neural-networks-and-deep-learning).
 
 > **Note**
 > This is a teaching project which shows how neural networks work, so it will reduce dependencies and optimizes as much as possible.
