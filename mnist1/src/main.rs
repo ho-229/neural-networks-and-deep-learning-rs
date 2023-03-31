@@ -19,13 +19,13 @@ fn main() {
         .finalize();
 
     let regular_data = |img: Vec<u8>, lbl: Vec<u8>| {
-        zip(img.chunks(28 * 28), lbl.iter())
+        zip(img.chunks(28 * 28), lbl)
             .map(|(img, lbl)| {
                 (
                     img.iter()
                         .map(|pixel| *pixel as f64 / 255.)
                         .collect::<Vec<_>>(),
-                    *lbl,
+                    lbl,
                 )
             })
             .collect::<Vec<_>>()

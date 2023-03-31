@@ -105,34 +105,25 @@ impl Network {
         for (img, lbl) in mini_batch {
             let (delta_nabla_b, delta_nabla_w) = self.backprop(img, lbl);
 
-            nabla_b = zip(nabla_b, delta_nabla_b)
-                .map(|(nb, dnb)| d1_add_d1(nb.into_iter(), dnb.into_iter()).collect())
-                .collect();
-            nabla_w = zip(nabla_w, delta_nabla_w)
-                .map(|(nw, dnw)| d2_add_d2(&nw, &dnw).collect())
-                .collect();
+            zip(nabla_b.iter_mut(), delta_nabla_b)
+                .for_each(|(nb, dnb)| d1_add_assign_d1(nb.iter_mut(), dnb.into_iter()));
+            zip(nabla_w.iter_mut(), delta_nabla_w).for_each(|(nw, dnw)| {
+                d2_add_assign_d2(
+                    nw.iter_mut().map(|inner| inner.iter_mut()),
+                    dnw.into_iter().map(|inner| inner.into_iter()),
+                );
+            });
         }
 
-        self.weights = zip(self.weights.iter(), nabla_w.iter())
-            .map(|(w, nw)| {
-                d2_sub_d2(
-                    w,
-                    &d0_dot_d2(eta / mini_batch.len() as f64, nw)
-                        .map(|inner| inner.collect())
-                        .collect(),
-                )
-                .collect()
-            })
-            .collect();
-        self.biases = zip(self.biases.iter(), nabla_b.iter())
-            .map(|(b, nb)| {
-                d1_sub_d1(
-                    b.iter().cloned(),
-                    d0_dot_d1(eta / mini_batch.len() as f64, nb),
-                )
-                .collect()
-            })
-            .collect();
+        zip(self.weights.iter_mut(), nabla_w).for_each(|(w, nw)| {
+            d2_sub_assign_d2(
+                w.iter_mut().map(|inner| inner.iter_mut()),
+                d0_dot_d2(eta / mini_batch.len() as f64, &nw),
+            )
+        });
+        zip(self.biases.iter_mut(), nabla_b).for_each(|(b, nb)| {
+            d1_sub_assign_d1(b.iter_mut(), d0_dot_d1(eta / mini_batch.len() as f64, &nb))
+        });
     }
 
     fn backprop(&self, img: &Vec<f64>, lbl: &u8) -> (Array2D<f64>, Array3D<f64>) {
@@ -166,21 +157,21 @@ impl Network {
             .collect();
 
         for l in 2..self.layer_count() {
-            let z = zs[zs.len() - l].clone();
-            let sp = z.iter().map(|val| sigmoid_prime(*val)).collect::<Vec<_>>();
+            let sp = zs[zs.len() - l].iter().map(|val| sigmoid_prime(*val));
             delta = d1_mul_d1(
                 d2_dot_d1(
                     &d2_transpose(&self.weights[self.weights.len() - l + 1]),
                     &delta,
                 ),
-                sp.iter().cloned(),
+                sp,
             )
             .collect();
 
-            let i = nabla_b.len() - l;
-            nabla_b[i] = delta.clone();
-            let i = nabla_w.len() - l;
-            nabla_w[i] = delta
+            let len = nabla_b.len();
+            nabla_b[len - l] = delta.clone();
+
+            let len = nabla_w.len();
+            nabla_w[len - l] = delta
                 .iter()
                 .map(|val| d0_dot_d1(*val, &activations[activations.len() - l - 1]).collect())
                 .collect();
@@ -195,7 +186,7 @@ impl Network {
             .map(|(img, lbl)| {
                 (one_hot2digit(&self.feed_forward(img.clone()).unwrap()) == *lbl) as u32
             })
-            .sum::<u32>()
+            .sum()
     }
 }
 

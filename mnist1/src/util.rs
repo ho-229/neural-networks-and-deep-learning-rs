@@ -1,4 +1,7 @@
-use std::iter::zip;
+use std::{
+    iter::zip,
+    ops::{AddAssign, SubAssign},
+};
 
 use rand::{thread_rng, Rng};
 use rand_distr::{
@@ -19,7 +22,7 @@ pub fn sigmoid<F: Float>(f: F) -> F {
 
 #[inline]
 pub fn sigmoid_prime<F: Float>(f: F) -> F {
-    sigmoid(f) * sigmoid(F::from(1).unwrap() - sigmoid(f))
+    sigmoid(f) * sigmoid(F::one() - sigmoid(f))
 }
 
 pub fn d2_dot_d1<'a, F: Float>(
@@ -65,35 +68,51 @@ pub fn d1_add_d1<'a, F: Float>(
 }
 
 #[inline]
-pub fn d1_sub_d1<'a, N1: Num + NumCast, N2: NumCast>(
-    a: impl Iterator<Item = N1> + 'a,
-    b: impl Iterator<Item = N2> + 'a,
-) -> impl Iterator<Item = N1> + 'a {
-    zip(a, b).map(|(a, b)| a.sub(cast(b).unwrap()))
+pub fn d1_sub_d1<'a, F: Float>(
+    a: impl Iterator<Item = F> + 'a,
+    b: impl Iterator<Item = F> + 'a,
+) -> impl Iterator<Item = F> + 'a {
+    zip(a, b).map(|(a, b)| a.sub(b))
 }
 
 #[inline]
-pub fn d1_mul_d1<'a, N1: Num + NumCast, N2: NumCast>(
-    a: impl Iterator<Item = N1> + 'a,
-    b: impl Iterator<Item = N2> + 'a,
-) -> impl Iterator<Item = N1> + 'a {
-    zip(a, b).map(|(a, b)| a.mul(cast(b).unwrap()))
+pub fn d1_mul_d1<'a, F: Float>(
+    a: impl Iterator<Item = F> + 'a,
+    b: impl Iterator<Item = F> + 'a,
+) -> impl Iterator<Item = F> + 'a {
+    zip(a, b).map(|(a, b)| a.mul(b))
 }
 
 #[inline]
-pub fn d2_add_d2<'a, F: Float>(
-    a: &'a Array2D<F>,
-    b: &'a Array2D<F>,
-) -> impl Iterator<Item = Array1D<F>> + 'a {
-    zip(a, b).map(|(a, b)| d1_add_d1(a.iter().cloned(), b.iter().cloned()).collect())
+pub fn d1_add_assign_d1<'a, F: Float + AddAssign + 'a>(
+    a: impl Iterator<Item = &'a mut F> + 'a,
+    b: impl Iterator<Item = F> + 'a,
+) {
+    zip(a, b).for_each(|(a, b)| a.add_assign(b));
 }
 
 #[inline]
-pub fn d2_sub_d2<'a, F: Float>(
-    a: &'a Array2D<F>,
-    b: &'a Array2D<F>,
-) -> impl Iterator<Item = Array1D<F>> + 'a {
-    zip(a, b).map(|(a, b)| d1_sub_d1(a.iter().cloned(), b.iter().cloned()).collect())
+pub fn d2_add_assign_d2<'a, F: Float + AddAssign + 'a>(
+    a: impl Iterator<Item = impl Iterator<Item = &'a mut F> + 'a> + 'a,
+    b: impl Iterator<Item = impl Iterator<Item = F> + 'a> + 'a,
+) {
+    zip(a, b).for_each(|(a, b)| d1_add_assign_d1(a, b));
+}
+
+#[inline]
+pub fn d1_sub_assign_d1<'a, F: Float + SubAssign + 'a>(
+    a: impl Iterator<Item = &'a mut F> + 'a,
+    b: impl Iterator<Item = F> + 'a,
+) {
+    zip(a, b).for_each(|(a, b)| a.sub_assign(b));
+}
+
+#[inline]
+pub fn d2_sub_assign_d2<'a, F: Float + SubAssign + 'a>(
+    a: impl Iterator<Item = impl Iterator<Item = &'a mut F> + 'a> + 'a,
+    b: impl Iterator<Item = impl Iterator<Item = F> + 'a> + 'a,
+) {
+    zip(a, b).for_each(|(a, b)| d1_sub_assign_d1(a, b));
 }
 
 #[inline]
