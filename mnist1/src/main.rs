@@ -34,6 +34,6 @@ fn main() {
     let training_data = regular_data(trn_img, trn_lbl);
     let test_data = regular_data(tst_img, tst_lbl);
 
-    let mut net = Network::new(vec![784, 40, 10]).unwrap();
+    let mut net = Network::new(vec![784, 30, 10]).unwrap();
     net.sdg(&training_data, 30, 10, 3.0, Some(&test_data));
 }

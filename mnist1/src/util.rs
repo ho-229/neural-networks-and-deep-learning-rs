@@ -15,14 +15,18 @@ pub type Array3D<T> = Vec<Vec<Vec<T>>>;
 
 #[inline]
 pub fn sigmoid<F: Float>(f: F) -> F {
-    use std::f64::consts::E;
-    let e = F::from(E).unwrap();
-    F::one() / (F::one() + e.powf(-f))
+    // use std::f64::consts::E;
+    // let e = F::from(E).unwrap();
+    // F::one() / (F::one() + e.powf(-f))
+
+    // fast sigmoid
+    F::from(0.5).unwrap() * (f / (F::one() + f.abs()) + F::one())
 }
 
 #[inline]
 pub fn sigmoid_prime<F: Float>(f: F) -> F {
-    sigmoid(f) * sigmoid(F::one() - sigmoid(f))
+    let res = sigmoid(f);
+    res * (F::one() - res)
 }
 
 pub fn d2_dot_d1<'a, F: Float>(
