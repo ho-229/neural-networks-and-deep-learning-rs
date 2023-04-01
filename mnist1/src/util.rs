@@ -13,6 +13,9 @@ pub type Array1D<T> = Vec<T>;
 pub type Array2D<T> = Vec<Vec<T>>;
 pub type Array3D<T> = Vec<Vec<Vec<T>>>;
 
+/// The sigmoid function.
+/// For the fast sigmoid function,
+/// see <https://stackoverflow.com/questions/10732027/fast-sigmoid-algorithm>.
 #[inline]
 pub fn sigmoid<F: Float>(f: F) -> F {
     // use std::f64::consts::E;
@@ -23,6 +26,7 @@ pub fn sigmoid<F: Float>(f: F) -> F {
     F::from(0.5).unwrap() * (f / (F::one() + f.abs()) + F::one())
 }
 
+/// Derivative of the sigmoid function.
 #[inline]
 pub fn sigmoid_prime<F: Float>(f: F) -> F {
     let res = sigmoid(f);

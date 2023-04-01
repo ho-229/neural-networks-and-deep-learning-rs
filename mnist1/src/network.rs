@@ -1,12 +1,11 @@
 use std::iter::zip;
-
 use thiserror::Error;
 
 use crate::util::*;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("layer sizes must greater than 2")]
+    #[error("layer sizes must greater than 1")]
     InvalidLayerSizes,
     #[error("invalid input")]
     InvalidInput,
@@ -20,23 +19,35 @@ pub type Sample = (
 
 #[derive(Debug, Clone)]
 pub struct Network {
+    /// number of input neurons
     input_len: usize,
+
+    // note that in the python version this is a 3d array of shape (N, M, 1),
+    // but here we are using 2d array of shape (N, M),
+    // so there may be some variation in the operations it is involved in.
     biases: Array2D<f64>,
     weights: Array3D<f64>,
 }
 
 impl Network {
+    /// The list `layer_sizes` contains the number of neurons in the
+    /// respective layers of the network.  For example, if the list
+    /// was [2, 3, 1] then it would be a three-layer network, with the
+    /// first layer containing 2 neurons, the second layer 3 neurons,
+    /// and the third layer 1 neuron.
     pub fn new(mut layer_sizes: Vec<usize>) -> Result<Self> {
         layer_sizes.retain(|size| *size > 0);
-        if layer_sizes.len() < 3 {
+        if layer_sizes.len() < 2 {
             Err(Error::InvalidLayerSizes)?;
         }
 
+        // The biases and weights for the
+        // network are initialized randomly, using a Gaussian
+        // distribution with mean 0, and variance 1.
         let biases = layer_sizes[1..]
             .iter()
             .map(|count| random_array(*count))
             .collect::<Array2D<f64>>();
-
         let weights = zip(
             layer_sizes[..layer_sizes.len() - 1].iter(),
             layer_sizes[1..].iter(),
@@ -56,9 +67,11 @@ impl Network {
             unreachable!();
         }
 
+        // the `1` is represents the input layer
         self.biases.len() + 1
     }
 
+    /// Return the output of the network
     pub fn feed_forward(&self, mut input: Array1D<f64>) -> Result<Array1D<f64>> {
         if input.len() != self.input_len {
             Err(Error::InvalidInput)?;
@@ -73,6 +86,7 @@ impl Network {
         Ok(input)
     }
 
+    /// Train the neural network using mini-batch stochastic gradient descent.
     pub fn sdg(
         &mut self,
         training_data: &Vec<Sample>,
@@ -81,7 +95,12 @@ impl Network {
         eta: f64,
         test_data: Option<&Vec<Sample>>,
     ) {
+        // let mut training_data = training_data.clone();
         for j in 0..epochs {
+            // shuffle the training data (but it seems no effect on training)
+            // use rand::seq::SliceRandom;
+            // training_data.shuffle(&mut rand::thread_rng());
+
             training_data
                 .chunks(mini_batch_size)
                 .for_each(|mini_batch| self.update_mini_batch(mini_batch, eta));
@@ -98,6 +117,8 @@ impl Network {
         }
     }
 
+    /// Update the network's weights and biases by applying
+    /// gradient descent using backpropagation to a single mini batch.
     fn update_mini_batch(&mut self, mini_batch: &[Sample], eta: f64) {
         let mut nabla_b = d2_same_shape(&self.biases);
         let mut nabla_w = d3_same_shape(&self.weights);
@@ -126,12 +147,19 @@ impl Network {
         });
     }
 
+    /// Return a tuple `(nabla_b, nabla_w)` representing the
+    /// gradient for the cost function C_x.  `nabla_b` and
+    /// `nabla_w` are multi dimensional arrays, similar
+    /// to `self.biases` and `self.weights`.
     fn backprop(&self, img: &Vec<f64>, lbl: &u8) -> (Array2D<f64>, Array3D<f64>) {
         let mut nabla_b = d2_same_shape(&self.biases);
         let mut nabla_w = d3_same_shape(&self.weights);
 
+        // feed forward
         let mut activation = img.clone();
+        // list to store all the activations
         let mut activations = vec![img.clone()];
+        // list to store all the z vectors
         let mut zs = Vec::new();
 
         for (b, w) in zip(self.biases.iter(), self.weights.iter()) {
@@ -141,6 +169,7 @@ impl Network {
             activations.push(activation.clone());
         }
 
+        // backward pass
         let mut delta = d1_mul_d1(
             d1_sub_d1(
                 activations.last().unwrap().iter().cloned(),
@@ -156,6 +185,10 @@ impl Network {
             .map(|val| d0_dot_d1(*val, &activations[activations.len() - 2]).collect())
             .collect();
 
+        // Note that the variable l in the loop below is used a little
+        // differently to the notation in Chapter 2 of the book.  Here,
+        // l = 1 means the last layer of neurons, l = 2 is the
+        // second-last layer, and so on.
         for l in 2..self.layer_count() {
             let sp = zs[zs.len() - l].iter().map(|val| sigmoid_prime(*val));
             delta = d1_mul_d1(
@@ -180,6 +213,10 @@ impl Network {
         (nabla_b, nabla_w)
     }
 
+    /// Return the number of test inputs for which the neural
+    /// network outputs the correct result. Note that the neural
+    /// network's output is assumed to be the index of whichever
+    /// neuron in the final layer has the highest activation.
     fn evaluate(&self, test_data: &Vec<Sample>) -> u32 {
         test_data
             .iter()
